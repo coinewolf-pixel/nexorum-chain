@@ -1,0 +1,4 @@
+build/
+.testnet/
+*.log
+__pycache__/

@@ -144,6 +144,10 @@ PY
 }
 
 cmd_start() {
+  if [[ ! -f "$(node_home 0)/config/genesis.json" ]]; then
+    echo "No testnet in $BASE. Run 'scripts/testnet.sh init' first (and check the BASE variable)." >&2
+    exit 1
+  fi
   for ((i = 0; i < NODES; i++)); do
     local h; h="$(node_home "$i")"
     if [[ -f "$BASE/node$i.pid" ]] && kill -0 "$(cat "$BASE/node$i.pid")" 2>/dev/null; then

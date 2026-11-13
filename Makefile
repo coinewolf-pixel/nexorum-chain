@@ -1,4 +1,7 @@
 VERSION ?= 0.1.0-testnet
+# Cosmos SDK v0.53 dependencies (bytedance/sonic) do not build with Go 1.26 yet.
+# Go downloads and uses this exact, tested toolchain automatically.
+export GOTOOLCHAIN ?= go1.24.7
 COMMIT  := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 LDFLAGS := -X github.com/cosmos/cosmos-sdk/version.Name=nexorum \
            -X github.com/cosmos/cosmos-sdk/version.AppName=nexorumd \

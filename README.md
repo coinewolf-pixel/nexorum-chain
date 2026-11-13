@@ -42,7 +42,7 @@
 
 ```bash
 sudo apt install -y golang-go build-essential git python3
-go version            # нужна версия 1.23 или новее
+go version            # любая версия от 1.21: make сам скачает проверенный Go 1.24.7
 git clone https://github.com/coinewolf-pixel/nexorum-chain ~/nexorum
 cd ~/nexorum
 make install          # сборка 5-15 минут, nexorumd ставится в /usr/local/bin

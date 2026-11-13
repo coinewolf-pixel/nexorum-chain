@@ -53,8 +53,11 @@ def load_ai():
 
 
 class Notifier:
-    def __init__(self, log_path, use_ai):
+    def __init__(self, log_path, use_ai, ai_cooldown=600):
         self.log_path = log_path
+        self.ai_cooldown = ai_cooldown
+        self.ai_busy = threading.Lock()
+        self.ai_last = 0.0
         self.token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
         self.chat = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
         self.ai = load_ai() if use_ai else None
@@ -76,24 +79,35 @@ class Notifier:
                 f.write(line + "\n")
         self.telegram(f"NEXORUM: {text}")
 
-    def explain(self, problem, snapshot):
-        """Ask the local model in the background: the alert itself is never delayed by it."""
-        if not self.ai:
+    def explain(self, problems, snapshot):
+        """One background request to the local model for all new problems of a check.
+
+        The model on a CPU is slow and is shared with the chat, so at most one request
+        runs at a time and no more often than every ai_cooldown seconds.
+        """
+        if not self.ai or not problems:
             return
+        if time.time() - self.ai_last < self.ai_cooldown or not self.ai_busy.acquire(blocking=False):
+            return
+        self.ai_last = time.time()
+        listing = "\n".join(f"- {p}" for p in problems)
 
         def run():
-            prompt = (
-                "Ты дежурный инженер блокчейна NEXORUM (Cosmos SDK + CometBFT, тестовая сеть из нескольких "
-                "валидаторов на одном сервере). Произошла проблема:\n"
-                f"{problem}\n\nСостояние узлов:\n{snapshot}\n\n"
-                "Кратко, 3-5 пунктов: что скорее всего случилось и какие команды проверить "
-                "(например scripts/testnet.sh status, логи в .testnet/logs/, systemctl). Без воды."
-            )
             try:
+                prompt = (
+                    "Ты дежурный инженер блокчейна NEXORUM (Cosmos SDK + CometBFT, тестовая сеть из нескольких "
+                    "валидаторов на одном сервере). Обнаружены проблемы:\n"
+                    f"{listing}\n\nСостояние узлов:\n{snapshot}\n\n"
+                    "Кратко, 3-5 пунктов: что скорее всего случилось и какие команды проверить "
+                    "(например scripts/testnet.sh status, systemctl status 'nexorum-node@*', "
+                    "journalctl -u nexorum-node@0). Без воды."
+                )
                 answer = self.ai.chat([{"role": "user", "content": prompt}]).strip()
-                self.emit(f"AI-разбор «{problem[:60]}»:\n{answer}")
+                self.emit(f"AI-разбор:\n{answer}")
             except Exception as e:
                 print(f"  (AI explanation failed: {e})", file=sys.stderr)
+            finally:
+                self.ai_busy.release()
 
         threading.Thread(target=run, daemon=True).start()
 
@@ -148,10 +162,12 @@ class Monitor:
         else:
             problems["all_down"] = "не отвечает ни один узел"
 
+        new = []
         for key, text in problems.items():
             if key not in self.active:
                 self.n.emit("ПРОБЛЕМА: " + text)
-                self.n.explain(text, self.snapshot(state))
+                new.append(text)
+        self.n.explain(new, self.snapshot(state))
         for key in list(self.active):
             if key not in problems:
                 self.n.emit("ИСПРАВЛЕНО: " + self.active[key])
@@ -199,6 +215,8 @@ def main():
     p.add_argument("--sign-window", type=int, default=5, help="blocks to check for validator signatures")
     p.add_argument("--log", default=os.path.join(os.path.dirname(HERE), ".testnet", "monitor.log"))
     p.add_argument("--no-ai", action="store_true", help="do not ask the local AI for explanations")
+    p.add_argument("--ai-cooldown", type=int, default=600,
+                   help="minimum seconds between AI explanations (the model is shared with the chat)")
     p.add_argument("--once", action="store_true", help="check once, print the state and exit")
     args = p.parse_args()
 
@@ -208,7 +226,8 @@ def main():
         addrs = [f"127.0.0.1:{26657 + 10 * i}" for i in range(4)]
     nodes = {f"node{i}": a for i, a in enumerate(addrs)}
     os.makedirs(os.path.dirname(args.log), exist_ok=True)
-    notifier = Notifier(args.log, use_ai=not args.no_ai)
+    # a single check exits right away: an AI request would keep the model busy for nobody
+    notifier = Notifier(args.log, use_ai=not (args.no_ai or args.once), ai_cooldown=args.ai_cooldown)
     mon = Monitor(nodes, args, notifier)
 
     if args.once:

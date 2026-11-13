@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-NEXORUM testnet load bots.
+AYVIA testnet load bots.
 
-Test accounts bot0..botN send random amounts of TEST NEXO to each other to check
+Test accounts bot0..botN send random amounts of TEST AYV to each other to check
 throughput, fees and stability of the test network. Only for the testnet:
 the bots use the unencrypted "test" keyring created by scripts/testnet.sh.
 
@@ -25,12 +25,12 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-DENOM = "unexo"
+DENOM = "uayv"
 
 
 def default_bin():
-    local = os.path.join(ROOT, "build", "nexorumd")
-    return local if os.access(local, os.X_OK) else "nexorumd"
+    local = os.path.join(ROOT, "build", "ayviad")
+    return local if os.access(local, os.X_OK) else "ayviad"
 
 
 class Chain:
@@ -53,7 +53,7 @@ class Chain:
     def has_key(self, name):
         return self.cli("keys", "show", name, "-a").returncode == 0
 
-    def ensure_bots(self, names, fund_unexo):
+    def ensure_bots(self, names, fund_uayv):
         """Create missing bot keys; fund every bot that is new or almost empty, in one multi-send."""
         missing = [n for n in names if not self.has_key(n)]
         if missing:
@@ -62,13 +62,13 @@ class Chain:
                 r = self.cli("keys", "add", n)
                 if r.returncode != 0:
                     sys.exit(f"cannot create key {n}: {r.stderr.strip()}")
-        low = [n for n in names if self.balance(self.address(n)) < 100_000]  # < 0.1 NEXO: cannot pay fees
+        low = [n for n in names if self.balance(self.address(n)) < 100_000]  # < 0.1 AYV: cannot pay fees
         if not low:
             return
-        print(f"funding {len(low)} bots from the faucet with {fund_unexo / 1e6:,.0f} NEXO each")
+        print(f"funding {len(low)} bots from the faucet with {fund_uayv / 1e6:,.0f} AYV each")
         low_addrs = [self.address(n) for n in low]
-        r = self.cli("tx", "bank", "multi-send", "faucet", *low_addrs, f"{fund_unexo}{DENOM}",
-                     "--chain-id", self.chain_id, "--node", self.node, "--fees", "5000unexo",
+        r = self.cli("tx", "bank", "multi-send", "faucet", *low_addrs, f"{fund_uayv}{DENOM}",
+                     "--chain-id", self.chain_id, "--node", self.node, "--fees", "5000uayv",
                      "--gas", "auto", "--gas-adjustment", "1.5", "-y", "-o", "json")
         try:
             d = json.loads(r.stdout)
@@ -120,12 +120,12 @@ def main():
     p.add_argument("--bots", type=int, default=10)
     p.add_argument("--home", default=os.environ.get("CLIENT_HOME", os.path.join(ROOT, ".testnet", "client")))
     p.add_argument("--node", default="tcp://127.0.0.1:26657")
-    p.add_argument("--chain-id", default="nexorum-testnet-1")
-    p.add_argument("--fee", default="500unexo")
-    p.add_argument("--max-amount", type=int, default=1_000_000, help="max unexo per transfer (1 NEXO = 1e6)")
+    p.add_argument("--chain-id", default="ayvia-testnet-1")
+    p.add_argument("--fee", default="500uayv")
+    p.add_argument("--max-amount", type=int, default=1_000_000, help="max uayv per transfer (1 AYV = 1e6)")
     p.add_argument("--bin", default=default_bin())
     p.add_argument("--fund", type=int, default=10_000_000_000,
-                   help="unexo the faucet gives each newly created bot (default 10,000 NEXO)")
+                   help="uayv the faucet gives each newly created bot (default 10,000 AYV)")
     args = p.parse_args()
 
     chain = Chain(args)
@@ -157,7 +157,7 @@ def run_cycle(chain, args, names, duration):
     addrs = {n: chain.address(n) for n in names}
     before = {n: chain.balance(a) for n, a in addrs.items()}
     start_h = chain.height()
-    print(f"{len(names)} bots, total {sum(before.values()) / 1e6:,.6f} NEXO, start height {start_h}")
+    print(f"{len(names)} bots, total {sum(before.values()) / 1e6:,.6f} AYV, start height {start_h}")
     print(f"running {duration}s at ~{args.rate} tx/s ...", flush=True)
 
     lock = threading.Lock()
@@ -226,10 +226,10 @@ def run_cycle(chain, args, names, duration):
     print(f"failed inside block:  {failed_in_block}")
     print(f"effective TPS:        {included / duration:.2f}")
     print(f"tx per block (avg):   {included / blocks:.2f}")
-    print(f"fees paid:            {fees / 1e6:.6f} NEXO")
+    print(f"fees paid:            {fees / 1e6:.6f} AYV")
     ok = diff == fees
-    print(f"balance check:        bots lost {diff / 1e6:.6f} NEXO, fees {fees / 1e6:.6f} NEXO -> "
-          f"{'OK, no NEXO lost or created' if ok else 'MISMATCH'}", flush=True)
+    print(f"balance check:        bots lost {diff / 1e6:.6f} AYV, fees {fees / 1e6:.6f} AYV -> "
+          f"{'OK, no AYV lost or created' if ok else 'MISMATCH'}", flush=True)
     return ok
 
 if __name__ == "__main__":

@@ -9,18 +9,18 @@ import (
 	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	app "github.com/coinewolf-pixel/nexorum/app"
-	"github.com/coinewolf-pixel/nexorum/cmd/nexorumd/cmd"
+	app "github.com/coinewolf-pixel/ayvia/app"
+	"github.com/coinewolf-pixel/ayvia/cmd/ayviad/cmd"
 )
 
-// Address prefixes of the NEXORUM network: nexo1..., nexovaloper1..., nexovalcons1...
+// Address prefixes of the AYVIA network: ayv1..., ayvvaloper1..., ayvvalcons1...
 const (
-	Bech32PrefixAccAddr  = "nexo"
-	Bech32PrefixAccPub   = "nexopub"
-	Bech32PrefixValAddr  = "nexovaloper"
-	Bech32PrefixValPub   = "nexovaloperpub"
-	Bech32PrefixConsAddr = "nexovalcons"
-	Bech32PrefixConsPub  = "nexovalconspub"
+	Bech32PrefixAccAddr  = "ayv"
+	Bech32PrefixAccPub   = "ayvpub"
+	Bech32PrefixValAddr  = "ayvvaloper"
+	Bech32PrefixValPub   = "ayvvaloperpub"
+	Bech32PrefixConsAddr = "ayvvalcons"
+	Bech32PrefixConsPub  = "ayvvalconspub"
 )
 
 func main() {

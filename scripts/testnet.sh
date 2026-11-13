@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NEXORUM local testnet: several validator nodes on one machine.
+# AYVIA local testnet: several validator nodes on one machine.
 #
 #   scripts/testnet.sh init     create a fresh testnet (deletes the old one in $BASE)
 #   scripts/testnet.sh start    start all nodes in the background
@@ -8,31 +8,31 @@
 #
 # Settings (environment variables):
 #   BASE      where node data lives          (default: ./.testnet)
-#   BIN       path to nexorumd               (default: ./build/nexorumd or nexorumd in PATH)
+#   BIN       path to ayviad               (default: ./build/ayviad or ayviad in PATH)
 #   NODES     number of validators           (default: 4, the minimum that survives one failed node)
-#   CHAIN_ID  chain id                       (default: nexorum-testnet-1)
+#   CHAIN_ID  chain id                       (default: ayvia-testnet-1)
 #   BOTS      number of load-test accounts   (default: 10)
 #
 # TEST NETWORK ONLY: keys use the unencrypted "test" keyring backend and the
-# NEXO created here has no monetary value.
+# AYV created here has no monetary value.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 BASE="${BASE:-$PWD/.testnet}"
 NODES="${NODES:-4}"
-CHAIN_ID="${CHAIN_ID:-nexorum-testnet-1}"
+CHAIN_ID="${CHAIN_ID:-ayvia-testnet-1}"
 BOTS="${BOTS:-10}"
-DENOM="unexo"                       # 1 NEXO = 1_000_000 unexo
+DENOM="uayv"                       # 1 AYV = 1_000_000 uayv
 if [[ -z "${BIN:-}" ]]; then
-  if [[ -x ./build/nexorumd ]]; then BIN="$PWD/build/nexorumd"; else BIN="$(command -v nexorumd)"; fi
+  if [[ -x ./build/ayviad ]]; then BIN="$PWD/build/ayviad"; else BIN="$(command -v ayviad)"; fi
 fi
 KR=(--keyring-backend test)
 
 # Test-only amounts (configurable later via the tokenomics proposal, see TOKENOMICS.md)
-VAL_BALANCE="1000000000000${DENOM}"     # 1,000,000 NEXO per validator
-VAL_STAKE="100000000000${DENOM}"        #   100,000 NEXO self-delegation
-FAUCET_BALANCE="10000000000000${DENOM}" # 10,000,000 NEXO for the faucet
-BOT_BALANCE="10000000000${DENOM}"       #     10,000 NEXO per load-test bot
+VAL_BALANCE="1000000000000${DENOM}"     # 1,000,000 AYV per validator
+VAL_STAKE="100000000000${DENOM}"        #   100,000 AYV self-delegation
+FAUCET_BALANCE="10000000000000${DENOM}" # 10,000,000 AYV for the faucet
+BOT_BALANCE="10000000000${DENOM}"       #     10,000 AYV per load-test bot
 MIN_GAS="0.0025${DENOM}"
 
 port() { echo $(( $1 + 10 * $2 )); }   # port BASEPORT NODE_INDEX
@@ -109,7 +109,7 @@ PY
     local h; h="$(node_home "$i")"
     [[ $i -gt 0 ]] && cp "$n0/config/genesis.json" "$h/config/genesis.json"
     "$BIN" genesis gentx "val$i" "$VAL_STAKE" --chain-id "$CHAIN_ID" "${KR[@]}" --home "$h" \
-      --moniker "nexorum-validator-$i" --output-document "$BASE/gentxs/val$i.json" >/dev/null 2>&1
+      --moniker "ayvia-validator-$i" --output-document "$BASE/gentxs/val$i.json" >/dev/null 2>&1
   done
   mkdir -p "$n0/config/gentx"
   cp "$BASE"/gentxs/*.json "$n0/config/gentx/"

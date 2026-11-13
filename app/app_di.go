@@ -89,7 +89,7 @@ type SimApp struct {
 
 func init() {
 	var err error
-	DefaultNodeHome, err = clienthelpers.GetNodeHomeDirectory(".nexorumd")
+	DefaultNodeHome, err = clienthelpers.GetNodeHomeDirectory(".ayviad")
 	if err != nil {
 		panic(err)
 	}

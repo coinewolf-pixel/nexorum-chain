@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 
 	"cosmossdk.io/log"
-	simapp "github.com/coinewolf-pixel/nexorum/app"
+	simapp "github.com/coinewolf-pixel/ayvia/app"
 	confixcmd "cosmossdk.io/tools/confix/cmd"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -75,7 +75,7 @@ func initAppConfig() (string, interface{}) {
 	//   own app.toml to override, or use this default value.
 	//
 	// In simapp, we set the min gas prices to 0.
-	srvCfg.MinGasPrices = "0unexo"
+	srvCfg.MinGasPrices = "0uayv"
 	// srvCfg.BaseConfig.IAVLDisableFastNode = true // disable fastnode by default
 
 	// Now we set the custom config default values.

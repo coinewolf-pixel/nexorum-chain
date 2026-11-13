@@ -3,18 +3,18 @@ VERSION ?= 0.1.0-testnet
 # Go downloads and uses this exact, tested toolchain automatically.
 export GOTOOLCHAIN ?= go1.24.7
 COMMIT  := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-LDFLAGS := -X github.com/cosmos/cosmos-sdk/version.Name=nexorum \
-           -X github.com/cosmos/cosmos-sdk/version.AppName=nexorumd \
+LDFLAGS := -X github.com/cosmos/cosmos-sdk/version.Name=ayvia \
+           -X github.com/cosmos/cosmos-sdk/version.AppName=ayviad \
            -X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
            -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT)
 
 .PHONY: build install testnet-init testnet-start testnet-stop testnet-status bots monitor clean
 
 build:
-	go build -trimpath -ldflags '$(LDFLAGS)' -o build/nexorumd ./cmd/nexorumd
+	go build -trimpath -ldflags '$(LDFLAGS)' -o build/ayviad ./cmd/ayviad
 
 install: build
-	sudo install -m 0755 build/nexorumd /usr/local/bin/nexorumd
+	sudo install -m 0755 build/ayviad /usr/local/bin/ayviad
 
 testnet-init: build
 	scripts/testnet.sh init

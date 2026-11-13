@@ -1,7 +1,7 @@
 {
-  "name": "@nexorum/sdk",
+  "name": "@ayvia/sdk",
   "version": "0.1.0",
-  "description": "SDK for the NEXORUM blockchain: wallets, balances, transfers, staking, Keplr/Leap",
+  "description": "SDK for the AYVIA blockchain: wallets, balances, transfers, staking, Keplr/Leap",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

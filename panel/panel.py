@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-NEXORUM control panel: one web page for the whole testnet.
+AYVIA control panel: one web page for the whole testnet.
 
-  PANEL_KEY="long-password" BASE=/data/nexorum/testnet python3 panel/panel.py
+  PANEL_KEY="long-password" BASE=/data/ayvia/testnet python3 panel/panel.py
   open http://SERVER_IP:8100
 
 Shows: server load and services, chain height and block time, validators, latest
 blocks and transactions, wallets and balances, monitor log. Lets you start/stop the
-load bots, send test NEXO from the faucet, and connect the Keplr wallet.
+load bots, send test AYV from the faucet, and connect the Keplr wallet.
 
 Everything except the Keplr proxy (/rpc, /rest) requires the panel password.
 The proxy exposes the node RPC/REST of node0 so a wallet in the browser can talk to the
@@ -38,15 +38,15 @@ PORT = int(os.environ.get("PANEL_PORT", "8100"))
 HOST = os.environ.get("PANEL_HOST", "0.0.0.0")
 BASE = os.environ.get("BASE", os.path.join(REPO, ".testnet"))
 NODES = int(os.environ.get("NODES", "4"))
-CHAIN_ID = os.environ.get("CHAIN_ID", "nexorum-testnet-1")
+CHAIN_ID = os.environ.get("CHAIN_ID", "ayvia-testnet-1")
 RPC = os.environ.get("RPC", "http://127.0.0.1:26657")
 REST = os.environ.get("REST", "http://127.0.0.1:1317")
-BIN = os.environ.get("BIN") or (os.path.join(REPO, "build", "nexorumd")
-                                if os.access(os.path.join(REPO, "build", "nexorumd"), os.X_OK)
-                                else (shutil.which("nexorumd") or "nexorumd"))
+BIN = os.environ.get("BIN") or (os.path.join(REPO, "build", "ayviad")
+                                if os.access(os.path.join(REPO, "build", "ayviad"), os.X_OK)
+                                else (shutil.which("ayviad") or "ayviad"))
 CLIENT_HOME = os.path.join(BASE, "client")
-SERVICES = [f"nexorum-node@{i}" for i in range(NODES)] + ["nexorum-monitor", "ollama", "myai", "docker"]
-FAUCET_MAX_NEXO = 1000
+SERVICES = [f"ayvia-node@{i}" for i in range(NODES)] + ["ayvia-monitor", "ollama", "myai", "docker"]
+FAUCET_MAX_AYV = 1000
 FAUCET_LOCK = threading.Lock()
 BOTS = {"proc": None, "started": None, "params": None, "log": os.path.join(BASE, "bots.log")}
 BOTS_STATE = os.path.join(BASE, "bots.json")  # remembers continuous bots across panel restarts / reboots
@@ -161,7 +161,7 @@ def chain():
     if len(blocks) > 1:
         t = [time.mktime(time.strptime(b["time"][:19], "%Y-%m-%dT%H:%M:%S")) for b in blocks]
         avg = round((t[0] - t[-1]) / (len(t) - 1), 2)
-    supply = safe(lambda: int(rest("/cosmos/bank/v1beta1/supply/by_denom?denom=unexo")["amount"]["amount"]), 0)
+    supply = safe(lambda: int(rest("/cosmos/bank/v1beta1/supply/by_denom?denom=uayv")["amount"]["amount"]), 0)
     inflation = safe(lambda: float(rest("/cosmos/mint/v1beta1/inflation")["inflation"]), 0)
     mempool = safe(lambda: int(rpc("/num_unconfirmed_txs")["n_txs"]), 0)
     return {"chain_id": st["node_info"]["network"], "version": st["node_info"]["version"], "height": h,
@@ -178,8 +178,8 @@ def txs(limit=25):
     for t in d.get("tx_responses", [])[:limit]:
         msgs = t["tx"]["body"]["messages"]
         m = msgs[0] if msgs else {}
-        amount = sum(int(c["amount"]) for c in m.get("amount", []) if isinstance(c, dict) and c.get("denom") == "unexo")
-        fee = sum(int(c["amount"]) for c in t["tx"]["auth_info"]["fee"]["amount"] if c["denom"] == "unexo")
+        amount = sum(int(c["amount"]) for c in m.get("amount", []) if isinstance(c, dict) and c.get("denom") == "uayv")
+        fee = sum(int(c["amount"]) for c in t["tx"]["auth_info"]["fee"]["amount"] if c["denom"] == "uayv")
         out.append({"hash": t["txhash"], "height": int(t["height"]), "type": m.get("@type", "").split(".")[-1],
                     "from": m.get("from_address", ""), "to": m.get("to_address", ""), "amount": amount,
                     "fee": fee, "code": t["code"], "time": t["timestamp"], "log": t.get("raw_log", "")[:120]})
@@ -196,7 +196,7 @@ def accounts():
         return {"error": (r.stderr or r.stdout).strip()[-200:]}
     out = []
     for k in json.loads(r.stdout or "[]"):
-        bal = safe(lambda: int(rest(f"/cosmos/bank/v1beta1/balances/{k['address']}/by_denom?denom=unexo")
+        bal = safe(lambda: int(rest(f"/cosmos/bank/v1beta1/balances/{k['address']}/by_denom?denom=uayv")
                                ["balance"]["amount"]), -1)
         out.append({"name": k["name"], "address": k["address"], "balance": bal})
     order = lambda a: (a["name"] != "faucet", int(re.sub(r"\D", "", a["name"]) or 0))  # noqa: E731
@@ -284,23 +284,23 @@ def bots_stop():
 
 def faucet(b):
     addr = str(b.get("address", "")).strip()
-    if not re.fullmatch(r"nexo1[02-9ac-hj-np-z]{38,58}", addr):
-        raise ValueError("Адрес должен начинаться с nexo1")
+    if not re.fullmatch(r"ayv1[02-9ac-hj-np-z]{38,58}", addr):
+        raise ValueError("Адрес должен начинаться с ayv1")
     try:
-        nexo = float(b.get("amount", 0))
+        ayv = float(b.get("amount", 0))
     except (TypeError, ValueError):
         raise ValueError("Сумма должна быть числом")
-    if not 0 < nexo <= FAUCET_MAX_NEXO:
-        raise ValueError(f"Сумма от 0 до {FAUCET_MAX_NEXO} NEXO")
-    amount = int(round(nexo * 1_000_000))
+    if not 0 < ayv <= FAUCET_MAX_AYV:
+        raise ValueError(f"Сумма от 0 до {FAUCET_MAX_AYV} AYV")
+    amount = int(round(ayv * 1_000_000))
     with FAUCET_LOCK:
-        r = cli("tx", "bank", "send", "faucet", addr, f"{amount}unexo", "--fees", "500unexo",
+        r = cli("tx", "bank", "send", "faucet", addr, f"{amount}uayv", "--fees", "500uayv",
                 "--chain-id", CHAIN_ID, "--node", RPC.replace("http://", "tcp://"),
                 "--keyring-backend", "test", "--home", CLIENT_HOME, "-y", "-o", "json")
     try:
         d = json.loads(r.stdout)
     except json.JSONDecodeError:
-        raise ValueError((r.stderr or r.stdout).strip()[-200:] or "ошибка nexorumd")
+        raise ValueError((r.stderr or r.stdout).strip()[-200:] or "ошибка ayviad")
     if d.get("code", 1) != 0:
         raise ValueError(d.get("raw_log", "транзакция отклонена")[:200])
     return {"txhash": d["txhash"], "amount": amount, "to": addr}
@@ -389,7 +389,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/accounts": lambda: {"accounts": safe(accounts, [])},
             "/api/bots": bots_state,
             "/api/monitor": lambda: {"lines": [x.rstrip("\n") for x in tail(os.path.join(BASE, "monitor.log"), 40)]},
-            "/api/config": lambda: {"chain_id": CHAIN_ID, "faucet_max": FAUCET_MAX_NEXO},
+            "/api/config": lambda: {"chain_id": CHAIN_ID, "faucet_max": FAUCET_MAX_AYV},
         }
         if path in routes:
             return self.send(200, routes[path]())
@@ -419,7 +419,7 @@ class Handler(BaseHTTPRequestHandler):
 
 PAGE = r"""<!DOCTYPE html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEXORUM — панель</title>
+<title>AYVIA — панель</title>
 <style>
 :root{--bg:#070b14;--card:#0e1524;--line:#1c2740;--text:#dbe4f3;--muted:#7d8ba6;--acc:#4f8cff;--ok:#2fbf71;--warn:#e6a23c;--bad:#e5484d}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
@@ -440,7 +440,7 @@ button{background:var(--acc);color:#fff;border:0;padding:7px 14px;border-radius:
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}.muted{color:var(--muted)}pre{background:#0a101d;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:300px;overflow:auto;font-size:12px;white-space:pre-wrap;margin:8px 0 0}
 .copy{cursor:pointer;border-bottom:1px dotted var(--muted)}
 </style></head><body>
-<header><b>NEXORUM</b><span class="muted" id="netid">testnet</span>
+<header><b>AYVIA</b><span class="muted" id="netid">testnet</span>
 <nav><a href="#overview">Обзор</a><a href="#chain">Блоки</a><a href="#vals">Валидаторы</a><a href="#txs">Транзакции</a><a href="#wallets">Кошельки</a><a href="#bots">Боты</a><a href="#faucet">Кран</a><a href="#keplr">Keplr</a><a href="#monitor">Наблюдатель</a></nav>
 <input id="key" type="password" placeholder="Пароль панели"></header>
 <main>
@@ -457,15 +457,15 @@ button{background:var(--acc);color:#fff;border:0;padding:7px 14px;border-radius:
 Ботов <input type="number" id="bnum" value="10" min="2" max="100" style="width:70px">
 <button id="bstart">Запустить</button><button id="bstop" class="sec">Остановить</button></div>
 <div id="bstate" class="muted"></div><pre id="blog">—</pre></section>
-<section id="faucet"><h2>Кран тестовых NEXO</h2><div class="row"><input type="text" id="faddr" placeholder="nexo1..." style="flex:1;min-width:260px">
-<input type="number" id="famt" value="10" min="0.000001" step="any" style="width:110px"> NEXO <button id="fsend">Отправить</button></div><div id="fres" class="muted"></div></section>
-<section id="keplr"><h2>Кошелёк Keplr</h2><p class="muted">Добавляет сеть NEXORUM Testnet в расширение Keplr и показывает ваш адрес и баланс. Переводы и стейкинг делаются в самом Keplr. Экспериментально: если Keplr не подключается по http, откройте панель через https (Tailscale serve).</p>
+<section id="faucet"><h2>Кран тестовых AYV</h2><div class="row"><input type="text" id="faddr" placeholder="ayv1..." style="flex:1;min-width:260px">
+<input type="number" id="famt" value="10" min="0.000001" step="any" style="width:110px"> AYV <button id="fsend">Отправить</button></div><div id="fres" class="muted"></div></section>
+<section id="keplr"><h2>Кошелёк Keplr</h2><p class="muted">Добавляет сеть AYVIA Testnet в расширение Keplr и показывает ваш адрес и баланс. Переводы и стейкинг делаются в самом Keplr. Экспериментально: если Keplr не подключается по http, откройте панель через https (Tailscale serve).</p>
 <div class="row"><button id="kconnect">Подключить Keplr</button></div><div id="kres" class="muted"></div></section>
 <section id="monitor"><h2>Журнал наблюдателя</h2><pre id="mlog">—</pre></section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const NEXO=u=>(u/1e6).toLocaleString("ru-RU",{maximumFractionDigits:6});
+const AYV=u=>(u/1e6).toLocaleString("ru-RU",{maximumFractionDigits:6});
 const short=s=>s?s.slice(0,12)+"…"+s.slice(-6):"";
 const bytes=n=>n>1e12?(n/1e12).toFixed(1)+" ТБ":(n/1e9).toFixed(1)+" ГБ";
 function cookie(){document.cookie="nxpanel="+encodeURIComponent($("key").value.trim())+"; path=/; max-age=31536000; SameSite=Strict";}
@@ -487,7 +487,7 @@ async function overview(){
   $("netid").textContent=c.chain_id||"сеть недоступна";
   const st=$("stats");st.textContent="";
   st.append(stat("Высота блока",c.height??"—"),stat("Время блока",c.block_time?c.block_time+" с":"—"),
-    stat("Всего NEXO",c.supply?NEXO(c.supply):"—"),stat("Инфляция",c.inflation?(c.inflation*100).toFixed(2)+" %":"—"),
+    stat("Всего AYV",c.supply?AYV(c.supply):"—"),stat("Инфляция",c.inflation?(c.inflation*100).toFixed(2)+" %":"—"),
     stat("В очереди tx",c.mempool??"—"),stat("Нагрузка CPU",s.load[0]+" / "+s.cpus+" ядер"),
     stat("Память свободно",bytes(s.mem_available)+" из "+bytes(s.mem_total)));
   for(const d of s.disks) st.append(stat("Диск "+d.path+" свободно",bytes(d.free)+" из "+bytes(d.total)));
@@ -504,17 +504,17 @@ async function vals(){
   const j=await api("/api/validators");const tb=$("valtab");tb.textContent="";
   if(j.error){tb.append(tr([td(j.error)]));return;}
   for(const v of j.validators) tb.append(tr([td(v.moniker),pill(v.jailed?"в тюрьме":(v.status==="bonded"?"активен":v.status),v.jailed?"bad":(v.status==="bonded"?"ok":"warn")),
-    td(NEXO(v.tokens)+" NEXO"),td((v.share*100).toFixed(1)+" %"),td((v.commission*100).toFixed(0)+" %"),copyTd(v.operator,short(v.operator))]));
+    td(AYV(v.tokens)+" AYV"),td((v.share*100).toFixed(1)+" %"),td((v.commission*100).toFixed(0)+" %"),copyTd(v.operator,short(v.operator))]));
 }
 async function txs(){
   const j=await api("/api/txs");const tb=$("txtab");tb.textContent="";
   if(!j.txs.length){tb.append(tr([td("Пока нет транзакций","muted")]));return;}
   for(const t of j.txs) tb.append(tr([td(t.height,"mono"),td(t.type),copyTd(t.from,short(t.from)),copyTd(t.to,short(t.to)),
-    td(t.amount?NEXO(t.amount)+" NEXO":"—"),td(NEXO(t.fee)),pill(t.code===0?"успех":"ошибка",t.code===0?"ok":"bad"),copyTd(t.hash,t.hash.slice(0,10)+"…")]));
+    td(t.amount?AYV(t.amount)+" AYV":"—"),td(AYV(t.fee)),pill(t.code===0?"успех":"ошибка",t.code===0?"ok":"bad"),copyTd(t.hash,t.hash.slice(0,10)+"…")]));
 }
 async function accounts(){
   const j=await api("/api/accounts");const tb=$("acctab");tb.textContent="";
-  for(const a of j.accounts) tb.append(tr([td(a.name),copyTd(a.address,a.address),td(a.balance>=0?NEXO(a.balance)+" NEXO":"—")]));
+  for(const a of j.accounts) tb.append(tr([td(a.name),copyTd(a.address,a.address),td(a.balance>=0?AYV(a.balance)+" AYV":"—")]));
 }
 async function bots(){
   const j=await api("/api/bots");
@@ -523,7 +523,7 @@ async function bots(){
   $("blog").textContent=j.log.length?j.log.join("\n"):"—";
   $("bstart").disabled=j.running;$("bstop").disabled=!j.running;
 }
-async function monitor(){const j=await api("/api/monitor");$("mlog").textContent=j.lines.length?j.lines.join("\n"):"Журнал пуст. Наблюдатель: python3 scripts/monitor.py или служба nexorum-monitor.";}
+async function monitor(){const j=await api("/api/monitor");$("mlog").textContent=j.lines.length?j.lines.join("\n"):"Журнал пуст. Наблюдатель: python3 scripts/monitor.py или служба ayvia-monitor.";}
 let busy=false, tick=0;
 async function refresh(all){
   if(busy) return; busy=true;
@@ -536,21 +536,21 @@ $("bforever").onchange=()=>{$("bdur").disabled=$("bforever").checked;};
 $("bstart").onclick=async()=>{try{await api("/api/bots/start",{duration:$("bforever").checked?0:+$("bdur").value,rate:+$("brate").value,bots:+$("bnum").value});bots();}catch(e){$("bstate").textContent=e.message;}};
 $("bstop").onclick=async()=>{try{await api("/api/bots/stop",{});bots();}catch(e){$("bstate").textContent=e.message;}};
 $("fsend").onclick=async()=>{$("fres").textContent="Отправляю…";$("fsend").disabled=true;
-  try{const j=await api("/api/faucet",{address:$("faddr").value,amount:+$("famt").value});$("fres").textContent="Отправлено "+NEXO(j.amount)+" NEXO, транзакция "+j.txhash.slice(0,16)+"…";}
+  try{const j=await api("/api/faucet",{address:$("faddr").value,amount:+$("famt").value});$("fres").textContent="Отправлено "+AYV(j.amount)+" AYV, транзакция "+j.txhash.slice(0,16)+"…";}
   catch(e){$("fres").textContent="Ошибка: "+e.message;} $("fsend").disabled=false;};
 $("kconnect").onclick=async()=>{
   const out=$("kres");
   if(!window.keplr){out.textContent="Расширение Keplr не найдено. Установите его в браузер с keplr.app и обновите страницу.";return;}
-  const o=location.origin, id=($("netid").textContent||"nexorum-testnet-1");
-  const cur={coinDenom:"NEXO",coinMinimalDenom:"unexo",coinDecimals:6};
+  const o=location.origin, id=($("netid").textContent||"ayvia-testnet-1");
+  const cur={coinDenom:"AYV",coinMinimalDenom:"uayv",coinDecimals:6};
   try{
-    await window.keplr.experimentalSuggestChain({chainId:id,chainName:"NEXORUM Testnet",rpc:o+"/rpc",rest:o+"/rest",
-      bip44:{coinType:118},bech32Config:{bech32PrefixAccAddr:"nexo",bech32PrefixAccPub:"nexopub",bech32PrefixValAddr:"nexovaloper",
-      bech32PrefixValPub:"nexovaloperpub",bech32PrefixConsAddr:"nexovalcons",bech32PrefixConsPub:"nexovalconspub"},
+    await window.keplr.experimentalSuggestChain({chainId:id,chainName:"AYVIA Testnet",rpc:o+"/rpc",rest:o+"/rest",
+      bip44:{coinType:118},bech32Config:{bech32PrefixAccAddr:"ayv",bech32PrefixAccPub:"ayvpub",bech32PrefixValAddr:"ayvvaloper",
+      bech32PrefixValPub:"ayvvaloperpub",bech32PrefixConsAddr:"ayvvalcons",bech32PrefixConsPub:"ayvvalconspub"},
       currencies:[cur],feeCurrencies:[{...cur,gasPriceStep:{low:0.0025,average:0.005,high:0.01}}],stakeCurrency:cur});
     await window.keplr.enable(id); const k=await window.keplr.getKey(id);
-    const r=await fetch("/rest/cosmos/bank/v1beta1/balances/"+k.bech32Address+"/by_denom?denom=unexo").then(x=>x.json());
-    out.textContent="Подключено: "+k.bech32Address+" — баланс "+NEXO(+r.balance.amount)+" NEXO. Пополнить можно краном выше.";
+    const r=await fetch("/rest/cosmos/bank/v1beta1/balances/"+k.bech32Address+"/by_denom?denom=uayv").then(x=>x.json());
+    out.textContent="Подключено: "+k.bech32Address+" — баланс "+AYV(+r.balance.amount)+" AYV. Пополнить можно краном выше.";
     $("faddr").value=k.bech32Address;
   }catch(e){out.textContent="Не удалось подключить: "+e.message;}
 };
@@ -561,7 +561,7 @@ refresh(true); setInterval(()=>refresh(false),5000); setInterval(()=>refresh(tru
 def main():
     if len(KEY) < 12:
         sys.exit('Задайте пароль панели от 12 символов:\n  PANEL_KEY="длинный-пароль" python3 panel/panel.py')
-    print(f"NEXORUM panel: http://{HOST}:{PORT}  (BASE={BASE}, nodes={NODES})")
+    print(f"AYVIA panel: http://{HOST}:{PORT}  (BASE={BASE}, nodes={NODES})")
     threading.Thread(target=bots_resume, daemon=True).start()
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
 

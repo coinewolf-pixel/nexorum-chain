@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NEXORUM network monitor with an AI explanation of problems.
+AYVIA network monitor with an AI explanation of problems.
 
 Watches every node over its RPC and raises an alert when:
   - a node stops responding;
@@ -77,7 +77,7 @@ class Notifier:
         if self.log_path:
             with open(self.log_path, "a", encoding="utf-8") as f:
                 f.write(line + "\n")
-        self.telegram(f"NEXORUM: {text}")
+        self.telegram(f"AYVIA: {text}")
 
     def explain(self, problems, snapshot):
         """One background request to the local model for all new problems of a check.
@@ -95,12 +95,12 @@ class Notifier:
         def run():
             try:
                 prompt = (
-                    "Ты дежурный инженер блокчейна NEXORUM (Cosmos SDK + CometBFT, тестовая сеть из нескольких "
+                    "Ты дежурный инженер блокчейна AYVIA (Cosmos SDK + CometBFT, тестовая сеть из нескольких "
                     "валидаторов на одном сервере). Обнаружены проблемы:\n"
                     f"{listing}\n\nСостояние узлов:\n{snapshot}\n\n"
                     "Кратко, 3-5 пунктов: что скорее всего случилось и какие команды проверить "
-                    "(например scripts/testnet.sh status, systemctl status 'nexorum-node@*', "
-                    "journalctl -u nexorum-node@0). Без воды."
+                    "(например scripts/testnet.sh status, systemctl status 'ayvia-node@*', "
+                    "journalctl -u ayvia-node@0). Без воды."
                 )
                 answer = self.ai.chat([{"role": "user", "content": prompt}]).strip()
                 self.emit(f"AI-разбор:\n{answer}")

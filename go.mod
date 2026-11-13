@@ -1,4 +1,4 @@
-module github.com/coinewolf-pixel/nexorum
+module github.com/coinewolf-pixel/ayvia
 
 go 1.23.2
 
@@ -27,7 +27,7 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	github.com/stretchr/testify v1.11.1 // indirect
+	github.com/stretchr/testify v1.11.1
 	go.uber.org/mock v0.6.0 // indirect
 	google.golang.org/protobuf v1.36.10
 )

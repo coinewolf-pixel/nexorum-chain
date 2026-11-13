@@ -9,7 +9,7 @@ import (
 	"cosmossdk.io/client/v2/autocli"
 	"cosmossdk.io/depinject"
 	"cosmossdk.io/log"
-	simapp "github.com/coinewolf-pixel/nexorum/app"
+	simapp "github.com/coinewolf-pixel/ayvia/app"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/config"
@@ -48,8 +48,8 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	rootCmd := &cobra.Command{
-		Use:           "nexorumd",
-		Short:         "NEXORUM blockchain daemon",
+		Use:           "ayviad",
+		Short:         "AYVIA blockchain daemon",
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			// set the default command outputs

@@ -1,10 +1,10 @@
-# NEXORUM — тестовая сеть
+# AYVIA — тестовая сеть
 
-Собственный блокчейн NEXORUM на **Cosmos SDK v0.53.8** и **CometBFT**: программа `nexorumd`,
-монета **NEXO**, тестовая сеть из нескольких валидаторов, боты нагрузки и наблюдатель за сетью
+Собственный блокчейн AYVIA на **Cosmos SDK v0.53.8** и **CometBFT**: программа `ayviad`,
+монета **AYV**, тестовая сеть из нескольких валидаторов, боты нагрузки и наблюдатель за сетью
 с объяснением проблем через локальный AI.
 
-> **Это тестовая сеть.** Тестовые NEXO не имеют денежной стоимости. Ключи хранятся в
+> **Это тестовая сеть.** Тестовые AYV не имеют денежной стоимости. Ключи хранятся в
 > незашифрованном виде (`--keyring-backend test`). Для основной сети (mainnet) нужны независимые
 > валидаторы, аудит безопасности и утверждённая экономическая модель — см. «Что дальше».
 
@@ -14,28 +14,28 @@
 
 | Проверка | Результат |
 |---|---|
-| Сборка `nexorumd` (Go 1.24, Cosmos SDK v0.53.8) | собирается, `go vet` без замечаний |
-| Адреса | `nexo1...`, `nexovaloper1...`, `nexovalcons1...` |
+| Сборка `ayviad` (Go 1.24, Cosmos SDK v0.53.8) | собирается, `go vet` без замечаний |
+| Адреса | `ayv1...`, `ayvvaloper1...`, `ayvvalcons1...` |
 | Сеть из 4 валидаторов | создаёт блоки каждые ~2 с, все узлы видят друг друга |
-| Перевод NEXO | проходит, комиссия списывается, перевод без комиссии отклоняется |
+| Перевод AYV | проходит, комиссия списывается, перевод без комиссии отклоняется |
 | Падение 1 узла из 4 | сеть продолжает работать, узел после включения догоняет остальных |
 | Падение 1 узла из 3 | сеть **останавливается** — поэтому по умолчанию 4 валидатора |
-| Боты: 264 перевода за 30 с | все попали в блоки, ~16 переводов на блок, баланс сошёлся до 1 unexo |
+| Боты: 264 перевода за 30 с | все попали в блоки, ~16 переводов на блок, баланс сошёлся до 1 uayv |
 | Наблюдатель | заметил падение узла, пропуск подписей, отставание, остановку сети и восстановление |
 
 ## Параметры сети
 
 | Параметр | Значение |
 |---|---|
-| Chain ID | `nexorum-testnet-1` |
-| Монета | NEXO, базовая единица `unexo`, 1 NEXO = 1 000 000 unexo |
+| Chain ID | `ayvia-testnet-1` |
+| Монета | AYV, базовая единица `uayv`, 1 AYV = 1 000 000 uayv |
 | Валидаторы | 4 (переживает падение одного) |
 | Время блока | ~2 с |
-| Минимальная цена газа | `0.0025unexo` |
+| Минимальная цена газа | `0.0025uayv` |
 | Модули | bank, staking, distribution, slashing, mint, gov, feegrant, authz, upgrade, evidence и др. |
 
-Начальные суммы тестовые и настраиваются в `scripts/testnet.sh`: 1 000 000 NEXO каждому
-валидатору (100 000 в стейкинге), 10 000 000 NEXO кошельку `faucet`, по 10 000 NEXO каждому боту.
+Начальные суммы тестовые и настраиваются в `scripts/testnet.sh`: 1 000 000 AYV каждому
+валидатору (100 000 в стейкинге), 10 000 000 AYV кошельку `faucet`, по 10 000 AYV каждому боту.
 Экономика основной сети ещё не утверждена — см. `TOKENOMICS.md`.
 
 ## Установка на Ubuntu
@@ -43,15 +43,15 @@
 ```bash
 sudo apt install -y golang-go build-essential git python3
 go version            # любая версия от 1.21: make сам скачает проверенный Go 1.24.7
-git clone https://github.com/coinewolf-pixel/nexorum-chain ~/nexorum
-cd ~/nexorum
-make install          # сборка 5-15 минут, nexorumd ставится в /usr/local/bin
+git clone https://github.com/coinewolf-pixel/ayvia-chain ~/ayvia
+cd ~/ayvia
+make install          # сборка 5-15 минут, ayviad ставится в /usr/local/bin
 ```
 
 Данные сети лучше держать на большом диске:
 
 ```bash
-export BASE=/data/nexorum/testnet
+export BASE=/data/ayvia/testnet
 scripts/testnet.sh init       # создать сеть (старая в $BASE удаляется!)
 scripts/testnet.sh start      # запустить 4 узла
 scripts/testnet.sh status     # высота и соседи каждого узла
@@ -61,22 +61,22 @@ scripts/testnet.sh stop       # остановить
 ### Автозапуск вместе с сервером
 
 ```bash
-sudo BASE=/data/nexorum/testnet scripts/install-systemd.sh
-systemctl status 'nexorum-node@*' nexorum-monitor --no-pager
+sudo BASE=/data/ayvia/testnet scripts/install-systemd.sh
+systemctl status 'ayvia-node@*' ayvia-monitor --no-pager
 ```
 
-Журналы: `journalctl -u nexorum-node@0 -f`, `journalctl -u nexorum-monitor -f`.
+Журналы: `journalctl -u ayvia-node@0 -f`, `journalctl -u ayvia-monitor -f`.
 
 ## Панель управления
 
 Одна веб-страница для всей сети: сервер и службы, высота и время блока, валидаторы, последние
-блоки и транзакции, кошельки и балансы, запуск и остановка ботов, кран тестовых NEXO,
+блоки и транзакции, кошельки и балансы, запуск и остановка ботов, кран тестовых AYV,
 журнал наблюдателя и подключение кошелька Keplr.
 
-`install-systemd.sh` ставит её как службу `nexorum-panel` и сам создаёт пароль:
+`install-systemd.sh` ставит её как службу `ayvia-panel` и сам создаёт пароль:
 
 ```bash
-sudo cat /etc/nexorum/panel.env      # пароль панели
+sudo cat /etc/ayvia/panel.env      # пароль панели
 ```
 
 Откройте `http://IP-сервера:8100` и введите пароль в поле справа вверху.
@@ -84,10 +84,10 @@ sudo cat /etc/nexorum/panel.env      # пароль панели
 Запуск вручную, без systemd:
 
 ```bash
-PANEL_KEY="длинный-пароль" BASE=/data/nexorum/testnet python3 panel/panel.py
+PANEL_KEY="длинный-пароль" BASE=/data/ayvia/testnet python3 panel/panel.py
 ```
 
-Кран отправляет до 1000 тестовых NEXO за раз. Для Keplr панель отдаёт RPC и REST узла по
+Кран отправляет до 1000 тестовых AYV за раз. Для Keplr панель отдаёт RPC и REST узла по
 адресам `/rpc` и `/rest` без пароля — это публичные данные сети; если сервер виден из
 интернета, открывайте панель через HTTPS (например, `sudo tailscale serve --bg 8100`).
 
@@ -104,7 +104,7 @@ RPC, API и gRPC слушают только `127.0.0.1` — снаружи се
 
 ## Боты нагрузки
 
-Тестовые кошельки `bot0..bot9` отправляют друг другу случайные суммы тестовых NEXO.
+Тестовые кошельки `bot0..bot9` отправляют друг другу случайные суммы тестовых AYV.
 В конце — отчёт и сверка: боты потеряли ровно столько, сколько заплатили комиссий.
 
 ```bash
@@ -119,7 +119,7 @@ sent:                 264
 accepted to mempool:  264
 included OK in blocks:   264
 tx per block (avg):   16.50
-balance check:        bots lost 0.132000 NEXO, fees 0.132000 NEXO -> OK, no NEXO lost or created
+balance check:        bots lost 0.132000 AYV, fees 0.132000 AYV -> OK, no AYV lost or created
 ```
 
 ## Наблюдатель за сетью
@@ -135,31 +135,31 @@ python3 scripts/monitor.py --log $BASE/monitor.log # следить постоя
 ```
 
 Сообщения в Telegram: создайте бота у @BotFather, узнайте свой chat id и запишите в
-`/etc/nexorum/monitor.env`:
+`/etc/ayvia/monitor.env`:
 
 ```
 TELEGRAM_BOT_TOKEN=123456:ABC...
 TELEGRAM_CHAT_ID=123456789
 ```
 
-затем `sudo systemctl restart nexorum-monitor`.
+затем `sudo systemctl restart ayvia-monitor`.
 
 ## Полезные команды
 
 ```bash
-nexorumd keys list --keyring-backend test --home $BASE/client
-nexorumd q bank balances <адрес> --node tcp://127.0.0.1:26657
-nexorumd tx bank send faucet <адрес> 1000000unexo --fees 500unexo \
-  --chain-id nexorum-testnet-1 --keyring-backend test --home $BASE/client -y
-nexorumd q staking validators --node tcp://127.0.0.1:26657
+ayviad keys list --keyring-backend test --home $BASE/client
+ayviad q bank balances <адрес> --node tcp://127.0.0.1:26657
+ayviad tx bank send faucet <адрес> 1000000uayv --fees 500uayv \
+  --chain-id ayvia-testnet-1 --keyring-backend test --home $BASE/client -y
+ayviad q staking validators --node tcp://127.0.0.1:26657
 ```
 
 ## Устройство кода
 
 ```
 app/                 приложение блокчейна (на основе эталонного simapp из Cosmos SDK v0.53.8)
-  app_config.go      список модулей и префиксы адресов nexo
-cmd/nexorumd/        программа nexorumd
+  app_config.go      список модулей и префиксы адресов ayv
+cmd/ayviad/        программа ayviad
 scripts/testnet.sh   создание и запуск тестовой сети
 scripts/loadbots.py  боты нагрузки
 scripts/monitor.py   наблюдатель с AI-разбором и Telegram
@@ -169,13 +169,13 @@ panel/panel.py       панель управления (порт 8100)
 
 ## Что дальше
 
-Готово: ядро блокчейна, монета NEXO, тестовая сеть, боты, наблюдатель.
+Готово: ядро блокчейна, монета AYV, тестовая сеть, боты, наблюдатель.
 
 Ещё не сделано:
 
 - обозреватель блоков, кошелёк, админ-панель;
 - пять AI-агентов и центр управления ими;
 - Docker, HTTPS, резервные копии, Prometheus/Grafana;
-- утверждённая экономика NEXO (`TOKENOMICS.md` — пока черновик);
+- утверждённая экономика AYV (`TOKENOMICS.md` — пока черновик);
 - для основной сети: независимые валидаторы на разных серверах, аудит безопасности,
   проверенное восстановление после сбоев.

@@ -1,0 +1,46 @@
+{
+  "$schema": "../../chain.schema.json",
+  "chain_name": "ayviatestnet",
+  "chain_type": "cosmos",
+  "chain_id": "ayvia-testnet-1",
+  "pretty_name": "AYVIA Testnet",
+  "website": "https://ayvia.example",
+  "status": "live",
+  "network_type": "testnet",
+  "bech32_prefix": "ayv",
+  "daemon_name": "ayviad",
+  "node_home": "$HOME/.ayviad",
+  "key_algos": ["secp256k1"],
+  "slip44": 118,
+  "fees": {
+    "fee_tokens": [
+      {
+        "denom": "uayv",
+        "fixed_min_gas_price": 0.0025,
+        "low_gas_price": 0.0025,
+        "average_gas_price": 0.005,
+        "high_gas_price": 0.01
+      }
+    ]
+  },
+  "staking": {
+    "staking_tokens": [{ "denom": "uayv" }]
+  },
+  "codebase": {
+    "git_repo": "https://github.com/coinewolf-pixel/ayvia-chain",
+    "recommended_version": "v0.1.0-testnet",
+    "compatible_versions": ["v0.1.0-testnet"],
+    "sdk": { "type": "cosmos", "version": "v0.53.8" },
+    "consensus": { "type": "cometbft", "version": "v0.38.23" },
+    "genesis": { "genesis_url": "https://ayvia.example/testnet/genesis.json" }
+  },
+  "apis": {
+    "rpc": [{ "address": "https://rpc.testnet.ayvia.example", "provider": "AYVIA" }],
+    "rest": [{ "address": "https://api.testnet.ayvia.example", "provider": "AYVIA" }],
+    "grpc": [{ "address": "grpc.testnet.ayvia.example:443", "provider": "AYVIA" }]
+  },
+  "explorers": [],
+  "logo_URIs": {
+    "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/testnets/ayviatestnet/images/ayv.png"
+  }
+}

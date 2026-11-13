@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Install systemd services so the testnet nodes and the monitor start with the server.
 #
-#   sudo BASE=/data/nexorum/.testnet scripts/install-systemd.sh
+#   sudo BASE=/data/ayvia/.testnet scripts/install-systemd.sh
 #
 # Creates:
-#   nexorum-node@0 .. nexorum-node@N-1   one service per validator node
-#   nexorum-monitor                      network monitor (alerts + AI explanations)
+#   ayvia-node@0 .. ayvia-node@N-1   one service per validator node
+#   ayvia-monitor                      network monitor (alerts + AI explanations)
 # Settings: BASE (testnet data, default <repo>/.testnet), NODES (default 4),
 #           RUN_USER (default: the user who called sudo).
-# Telegram: put TELEGRAM_BOT_TOKEN=... and TELEGRAM_CHAT_ID=... into /etc/nexorum/monitor.env
+# Telegram: put TELEGRAM_BOT_TOKEN=... and TELEGRAM_CHAT_ID=... into /etc/ayvia/monitor.env
 set -euo pipefail
 
 [[ $EUID -eq 0 ]] || { echo "run with sudo"; exit 1; }
@@ -17,16 +17,16 @@ BASE="${BASE:-$REPO/.testnet}"
 NODES="${NODES:-4}"
 RUN_USER="${RUN_USER:-${SUDO_USER:-root}}"
 RUN_HOME="$(getent passwd "$RUN_USER" | cut -d: -f6)"
-BIN="$(command -v nexorumd || echo "$REPO/build/nexorumd")"
-[[ -x "$BIN" ]] || { echo "nexorumd not found: run 'make install' first"; exit 1; }
+BIN="$(command -v ayviad || echo "$REPO/build/ayviad")"
+[[ -x "$BIN" ]] || { echo "ayviad not found: run 'make install' first"; exit 1; }
 [[ -d "$BASE/node0" ]] || { echo "no testnet in $BASE: run 'BASE=$BASE scripts/testnet.sh init' first"; exit 1; }
 
 # nodes started by scripts/testnet.sh must not run twice
 BASE="$BASE" NODES="$NODES" sudo -u "$RUN_USER" "$REPO/scripts/testnet.sh" stop || true
 
-cat >/etc/systemd/system/nexorum-node@.service <<EOF
+cat >/etc/systemd/system/ayvia-node@.service <<EOF
 [Unit]
-Description=NEXORUM testnet validator node %i
+Description=AYVIA testnet validator node %i
 After=network-online.target
 Wants=network-online.target
 
@@ -41,22 +41,22 @@ LimitNOFILE=65535
 WantedBy=multi-user.target
 EOF
 
-mkdir -p /etc/nexorum
-[[ -f /etc/nexorum/monitor.env ]] || printf 'TELEGRAM_BOT_TOKEN=\nTELEGRAM_CHAT_ID=\n' >/etc/nexorum/monitor.env
-chmod 600 /etc/nexorum/monitor.env
+mkdir -p /etc/ayvia
+[[ -f /etc/ayvia/monitor.env ]] || printf 'TELEGRAM_BOT_TOKEN=\nTELEGRAM_CHAT_ID=\n' >/etc/ayvia/monitor.env
+chmod 600 /etc/ayvia/monitor.env
 
 NODE_LIST=""
 for ((i = 0; i < NODES; i++)); do NODE_LIST+="${NODE_LIST:+,}127.0.0.1:$((26657 + 10 * i))"; done
 
-cat >/etc/systemd/system/nexorum-monitor.service <<EOF
+cat >/etc/systemd/system/ayvia-monitor.service <<EOF
 [Unit]
-Description=NEXORUM network monitor
-After=network-online.target nexorum-node@0.service
+Description=AYVIA network monitor
+After=network-online.target ayvia-node@0.service
 
 [Service]
 User=$RUN_USER
 Environment=AI_PY=$RUN_HOME/ai.py
-EnvironmentFile=/etc/nexorum/monitor.env
+EnvironmentFile=/etc/ayvia/monitor.env
 ExecStart=/usr/bin/python3 $REPO/scripts/monitor.py --nodes $NODE_LIST --log $BASE/monitor.log
 Restart=always
 RestartSec=10
@@ -65,23 +65,23 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-# control panel; the password is generated once and kept in /etc/nexorum/panel.env
-if [[ ! -f /etc/nexorum/panel.env ]]; then
-  printf 'PANEL_KEY=%s\n' "$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')" >/etc/nexorum/panel.env
+# control panel; the password is generated once and kept in /etc/ayvia/panel.env
+if [[ ! -f /etc/ayvia/panel.env ]]; then
+  printf 'PANEL_KEY=%s\n' "$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')" >/etc/ayvia/panel.env
 fi
-chmod 600 /etc/nexorum/panel.env
+chmod 600 /etc/ayvia/panel.env
 
-cat >/etc/systemd/system/nexorum-panel.service <<EOF
+cat >/etc/systemd/system/ayvia-panel.service <<EOF
 [Unit]
-Description=NEXORUM control panel
-After=network-online.target nexorum-node@0.service
+Description=AYVIA control panel
+After=network-online.target ayvia-node@0.service
 
 [Service]
 User=$RUN_USER
 Environment=BASE=$BASE
 Environment=NODES=$NODES
 Environment=BIN=$BIN
-EnvironmentFile=/etc/nexorum/panel.env
+EnvironmentFile=/etc/ayvia/panel.env
 ExecStart=/usr/bin/python3 $REPO/panel/panel.py
 Restart=always
 RestartSec=5
@@ -91,8 +91,8 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-for ((i = 0; i < NODES; i++)); do systemctl enable --now "nexorum-node@$i"; done
-systemctl enable --now nexorum-monitor nexorum-panel
-echo "Installed. Check: systemctl status 'nexorum-node@*' nexorum-monitor nexorum-panel --no-pager"
+for ((i = 0; i < NODES; i++)); do systemctl enable --now "ayvia-node@$i"; done
+systemctl enable --now ayvia-monitor ayvia-panel
+echo "Installed. Check: systemctl status 'ayvia-node@*' ayvia-monitor ayvia-panel --no-pager"
 echo "Panel: http://$(hostname -I | awk '{print $1}'):8100"
-echo "Panel password: sudo cat /etc/nexorum/panel.env"
+echo "Panel password: sudo cat /etc/ayvia/panel.env"

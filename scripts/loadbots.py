@@ -85,6 +85,8 @@ class Chain:
     def balance(self, addr):
         r = subprocess.run([self.bin, "q", "bank", "balance", addr, DENOM, "--node", self.node, "-o", "json"],
                            capture_output=True, text=True, timeout=30)
+        if r.returncode != 0 or not r.stdout.strip():
+            raise RuntimeError(f"node {self.node} not responding ({(r.stderr or '').strip()[-120:]})")
         return int(json.loads(r.stdout)["balance"]["amount"])
 
     def height(self):
@@ -112,7 +114,8 @@ class Chain:
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--duration", type=int, default=60, help="seconds to run")
+    p.add_argument("--duration", type=int, default=60, help="seconds to run; 0 = run forever in cycles")
+    p.add_argument("--cycle", type=int, default=300, help="cycle length in continuous mode (seconds)")
     p.add_argument("--rate", type=float, default=2.0, help="transactions per second (total, target)")
     p.add_argument("--bots", type=int, default=10)
     p.add_argument("--home", default=os.environ.get("CLIENT_HOME", os.path.join(ROOT, ".testnet", "client")))
@@ -127,18 +130,41 @@ def main():
 
     chain = Chain(args)
     names = [f"bot{i}" for i in range(args.bots)]
+
+    if args.duration > 0:
+        ok = run_cycle(chain, args, names, args.duration)
+        sys.exit(0 if ok else 2)
+
+    # --duration 0: run forever in cycles; survive temporary node outages
+    print(f"continuous mode: cycles of {args.cycle}s at ~{args.rate} tx/s, Ctrl+C or stop in the panel to end", flush=True)
+    cycle = 0
+    while True:
+        cycle += 1
+        print(f"\n##### cycle {cycle}  {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
+        try:
+            run_cycle(chain, args, names, args.cycle)
+        except SystemExit as e:
+            print(f"cycle {cycle} aborted: {e}; retrying in 30 s", flush=True)
+            time.sleep(30)
+        except Exception as e:  # node down, timeout, etc.
+            print(f"cycle {cycle} failed: {e.__class__.__name__}: {e}; retrying in 30 s", flush=True)
+            time.sleep(30)
+
+
+def run_cycle(chain, args, names, duration):
+    """One load-test run of `duration` seconds with a report. Returns True if balances match."""
     chain.ensure_bots(names, args.fund)
     addrs = {n: chain.address(n) for n in names}
     before = {n: chain.balance(a) for n, a in addrs.items()}
     start_h = chain.height()
     print(f"{len(names)} bots, total {sum(before.values()) / 1e6:,.6f} NEXO, start height {start_h}")
-    print(f"running {args.duration}s at ~{args.rate} tx/s ...")
+    print(f"running {duration}s at ~{args.rate} tx/s ...", flush=True)
 
     lock = threading.Lock()
     stats = {"sent": 0, "accepted": 0, "rejected": 0}
     errors = {}
     hashes = []
-    stop = time.time() + args.duration
+    stop = time.time() + duration
     interval = len(names) / args.rate  # each bot sends every `interval` seconds
 
     def bot(name):
@@ -147,7 +173,10 @@ def main():
             t0 = time.time()
             to = random.choice([n for n in names if n != name])
             amount = random.randint(1, args.max_amount)
-            code, h, log = chain.send(name, addrs[to], amount)
+            try:
+                code, h, log = chain.send(name, addrs[to], amount)
+            except Exception as e:  # e.g. CLI timeout while a node restarts
+                code, h, log = -1, None, f"{e.__class__.__name__}"
             with lock:
                 stats["sent"] += 1
                 if code == 0:
@@ -165,7 +194,7 @@ def main():
     for t in threads:
         t.join()
 
-    print("waiting for the last transactions to land in blocks ...")
+    print("waiting for the last transactions to land in blocks ...", flush=True)
     time.sleep(8)
     end_h = chain.height()
 
@@ -195,14 +224,13 @@ def main():
         print(f"   {c} x {e}")
     print(f"included OK in blocks:{included:>6}")
     print(f"failed inside block:  {failed_in_block}")
-    print(f"effective TPS:        {included / args.duration:.2f}")
+    print(f"effective TPS:        {included / duration:.2f}")
     print(f"tx per block (avg):   {included / blocks:.2f}")
     print(f"fees paid:            {fees / 1e6:.6f} NEXO")
     ok = diff == fees
     print(f"balance check:        bots lost {diff / 1e6:.6f} NEXO, fees {fees / 1e6:.6f} NEXO -> "
-          f"{'OK, no NEXO lost or created' if ok else 'MISMATCH'}")
-    sys.exit(0 if ok else 2)
-
+          f"{'OK, no NEXO lost or created' if ok else 'MISMATCH'}", flush=True)
+    return ok
 
 if __name__ == "__main__":
     main()

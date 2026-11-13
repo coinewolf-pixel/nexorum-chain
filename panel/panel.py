@@ -49,6 +49,7 @@ SERVICES = [f"nexorum-node@{i}" for i in range(NODES)] + ["nexorum-monitor", "ol
 FAUCET_MAX_NEXO = 1000
 FAUCET_LOCK = threading.Lock()
 BOTS = {"proc": None, "started": None, "params": None, "log": os.path.join(BASE, "bots.log")}
+BOTS_STATE = os.path.join(BASE, "bots.json")  # remembers continuous bots across panel restarts / reboots
 BOTS_LOCK = threading.Lock()
 
 
@@ -221,28 +222,55 @@ def bots_state():
                 "log": [line.rstrip("\n") for line in tail(BOTS["log"], 30)]}
 
 
+def save_bots_state(running, params):
+    try:
+        with open(BOTS_STATE, "w") as f:
+            json.dump({"running": running, "params": params}, f)
+    except OSError:
+        pass
+
+
 def bots_start(b):
-    duration = int(b.get("duration", 60))
+    duration = int(b.get("duration", 60))  # 0 = without stopping
     rate = float(b.get("rate", 2))
     count = int(b.get("bots", 10))
-    if not (5 <= duration <= 3600 and 0.1 <= rate <= 50 and 2 <= count <= 100):
-        raise ValueError("Длительность 5–3600 с, скорость 0.1–50 tx/s, ботов 2–100")
+    if not ((duration == 0 or 5 <= duration <= 3600) and 0.1 <= rate <= 50 and 2 <= count <= 100):
+        raise ValueError("Длительность 5–3600 с (или без остановки), скорость 0.1–50 tx/s, ботов 2–100")
     with BOTS_LOCK:
         if BOTS["proc"] is not None and BOTS["proc"].poll() is None:
             raise ValueError("Боты уже работают. Сначала остановите их.")
         os.makedirs(BASE, exist_ok=True)
-        log = open(BOTS["log"], "w")
+        log = open(BOTS["log"], "a" if duration == 0 else "w")
         BOTS["proc"] = subprocess.Popen(
             [sys.executable, "-u", os.path.join(REPO, "scripts", "loadbots.py"), "--home", CLIENT_HOME,
              "--duration", str(duration), "--rate", str(rate), "--bots", str(count), "--bin", BIN,
-             "--chain-id", CHAIN_ID, "--node", RPC.replace("http://", "tcp://")],
+             "--chain-id", CHAIN_ID, "--node", RPC.replace("http://", "tcp://"), "--cycle", "300"],
             stdout=log, stderr=subprocess.STDOUT, cwd=REPO)
         BOTS["started"] = time.strftime("%Y-%m-%d %H:%M:%S")
         BOTS["params"] = {"duration": duration, "rate": rate, "bots": count}
+        save_bots_state(duration == 0, BOTS["params"])
     return bots_state()
 
 
+def bots_resume():
+    """After a panel restart or a reboot, start continuous bots again if they were running."""
+    try:
+        st = json.load(open(BOTS_STATE))
+    except (OSError, ValueError):
+        return
+    if st.get("running") and st.get("params", {}).get("duration") == 0:
+        time.sleep(float(os.environ.get("PANEL_RESUME_DELAY", "20")))  # let the nodes start after a reboot
+        # bots left over from a panel that was killed by hand must not run twice
+        subprocess.run(["pkill", "-f", f"loadbots.py --home {CLIENT_HOME}"], capture_output=True)
+        try:
+            bots_start(st["params"])
+            print("continuous bots resumed", flush=True)
+        except ValueError as e:
+            print(f"could not resume bots: {e}", flush=True)
+
+
 def bots_stop():
+    save_bots_state(False, BOTS["params"])
     with BOTS_LOCK:
         p = BOTS["proc"]
         if p is not None and p.poll() is None:
@@ -423,7 +451,8 @@ button{background:var(--acc);color:#fff;border:0;padding:7px 14px;border-radius:
 <section id="txs"><h2>Последние транзакции</h2><table><thead><tr><th>Блок</th><th>Тип</th><th>От</th><th>Кому</th><th>Сумма</th><th>Комиссия</th><th>Итог</th><th>Хеш</th></tr></thead><tbody id="txtab"></tbody></table></section>
 <section id="wallets"><h2>Кошельки тестовой сети</h2><p class="muted">Кран и боты. Ключи хранятся на сервере без шифрования — только для тестовой сети.</p><table><thead><tr><th>Имя</th><th>Адрес</th><th>Баланс</th></tr></thead><tbody id="acctab"></tbody></table></section>
 <section id="bots"><h2>Боты нагрузки</h2>
-<div class="row">Длительность, с <input type="number" id="bdur" value="60" min="5" max="3600" style="width:90px">
+<div class="row"><label><input type="checkbox" id="bforever"> без остановки</label>
+Длительность, с <input type="number" id="bdur" value="60" min="5" max="3600" style="width:90px">
 Скорость, tx/s <input type="number" id="brate" value="2" min="0.1" max="50" step="0.1" style="width:80px">
 Ботов <input type="number" id="bnum" value="10" min="2" max="100" style="width:70px">
 <button id="bstart">Запустить</button><button id="bstop" class="sec">Остановить</button></div>
@@ -489,7 +518,7 @@ async function accounts(){
 }
 async function bots(){
   const j=await api("/api/bots");
-  $("bstate").textContent=j.running?("Работают с "+j.started+": "+j.params.bots+" ботов, "+j.params.rate+" tx/s, "+j.params.duration+" с")
+  $("bstate").textContent=j.running?("Работают с "+j.started+": "+j.params.bots+" ботов, "+j.params.rate+" tx/s, "+(j.params.duration?j.params.duration+" с":"без остановки (отчёт каждые 5 минут, после перезагрузки запустятся сами)"))
     :(j.started?("Остановлены. Последний запуск "+j.started+(j.exit_code===0?", баланс сошёлся":j.exit_code===2?", РАСХОЖДЕНИЕ баланса":"")):"Не запускались");
   $("blog").textContent=j.log.length?j.log.join("\n"):"—";
   $("bstart").disabled=j.running;$("bstop").disabled=!j.running;
@@ -503,7 +532,8 @@ async function refresh(all){
   catch(e){ $("auth").textContent=e.message.includes("пароль")?"Введите пароль панели вверху справа.":"Ошибка: "+e.message; }
   busy=false;
 }
-$("bstart").onclick=async()=>{try{await api("/api/bots/start",{duration:+$("bdur").value,rate:+$("brate").value,bots:+$("bnum").value});bots();}catch(e){$("bstate").textContent=e.message;}};
+$("bforever").onchange=()=>{$("bdur").disabled=$("bforever").checked;};
+$("bstart").onclick=async()=>{try{await api("/api/bots/start",{duration:$("bforever").checked?0:+$("bdur").value,rate:+$("brate").value,bots:+$("bnum").value});bots();}catch(e){$("bstate").textContent=e.message;}};
 $("bstop").onclick=async()=>{try{await api("/api/bots/stop",{});bots();}catch(e){$("bstate").textContent=e.message;}};
 $("fsend").onclick=async()=>{$("fres").textContent="Отправляю…";$("fsend").disabled=true;
   try{const j=await api("/api/faucet",{address:$("faddr").value,amount:+$("famt").value});$("fres").textContent="Отправлено "+NEXO(j.amount)+" NEXO, транзакция "+j.txhash.slice(0,16)+"…";}
@@ -532,6 +562,7 @@ def main():
     if len(KEY) < 12:
         sys.exit('Задайте пароль панели от 12 символов:\n  PANEL_KEY="длинный-пароль" python3 panel/panel.py')
     print(f"NEXORUM panel: http://{HOST}:{PORT}  (BASE={BASE}, nodes={NODES})")
+    threading.Thread(target=bots_resume, daemon=True).start()
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
 
 

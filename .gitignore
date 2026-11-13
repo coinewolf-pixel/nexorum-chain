@@ -4,3 +4,5 @@ build/
 __pycache__/
 node_modules/
 sdk/js/dist/
+wallet-web/node_modules/
+wallet-web/dist/

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Сеть AYVIA — кошелёк</title>
+<meta name="theme-color" content="#0E0A1F" />
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#0E0A1F;--bg2:#0c0820;--card:#151030;--card2:#1b1440;--line:#2a2058;--text:#efeaff;--muted:#9a90c4;--violet:#8b5cf6;--gold:#f5b642;--green:#5be59a;--pink:#ff6b81;--blue:#3b82f6}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif}
+body{background:radial-gradient(1200px 600px at 10% -10%,#2a1660 0,transparent 60%),radial-gradient(900px 500px at 110% 10%,#3a1250 0,transparent 55%),var(--bg);min-height:100vh}
+a{color:var(--violet)}h1,h2,h3{font-family:"Space Grotesk",sans-serif;margin:0}
+.wrap{max-width:980px;margin:0 auto;padding:16px 16px 80px}
+header{display:flex;align-items:center;gap:12px;padding:6px 0 14px}
+header img{width:44px;height:44px;border-radius:12px}
+header .t{flex:1}header .t h1{font-size:20px;letter-spacing:.04em}header .t div{color:var(--muted);font-size:12px}
+.icon-btn{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:8px 12px;cursor:pointer;font:inherit}
+.back{color:var(--muted);text-decoration:none;font-size:14px}
+.banner{background:#2a1d08;border:1px solid #5c4210;color:#ffd98a;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
+.card h2{font-size:16px;margin-bottom:12px;color:#fff}
+.status{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}.status b{color:var(--text);font-weight:600}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px}.dot.ok{background:var(--green);box-shadow:0 0 8px var(--green)}.dot.bad{background:var(--pink)}
+.balance{font-family:"Space Grotesk";font-size:38px;font-weight:700;letter-spacing:.01em}.balance small{font-size:18px;color:var(--gold);margin-left:6px}
+.sub{color:var(--muted);font-size:13px}
+.addr{font-family:"Space Mono",monospace;font-size:13px;word-break:break-all;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:10px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.row>*{flex:0 0 auto}
+.btn{background:linear-gradient(135deg,#8b5cf6,#c026d3);border:0;color:#fff;border-radius:12px;padding:10px 16px;font:600 14px Inter;cursor:pointer}
+.btn.gold{background:linear-gradient(135deg,#f5b642,#e08a10);color:#2a1700}.btn.ghost{background:var(--card);border:1px solid var(--line);color:var(--text)}
+.btn:disabled{opacity:.5;cursor:default}
+input,textarea{width:100%;background:var(--bg2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:10px 12px;font:14px Inter}
+textarea{min-height:80px;font-family:"Space Mono",monospace}
+label{display:block;color:var(--muted);font-size:13px;margin:10px 0 4px}
+.tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}.tabs button{background:var(--bg2);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:8px 14px;cursor:pointer;font:500 14px Inter}
+.tabs button.on{background:var(--violet);border-color:var(--violet);color:#fff}
+.msg{margin-top:10px;font-size:14px}.msg.ok{color:var(--green)}.msg.err{color:var(--pink)}
+.list{display:grid;gap:8px}.item{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;flex-wrap:wrap}
+.item .l{min-width:0}.item .t{font-weight:600}.item .s{color:var(--muted);font-size:12px;font-family:"Space Mono",monospace;word-break:break-all}
+.amt.in{color:var(--green)}.amt.out{color:var(--pink)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.chart svg{width:100%;height:auto;display:block}.chart .cap{color:var(--muted);font-size:12px;margin-top:6px}
+.words{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-family:"Space Mono",monospace;font-size:13px;margin:10px 0}
+.words span{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:6px 8px}.words span i{color:var(--muted);font-style:normal;margin-right:6px}
+.hidden{display:none!important}
+.modal{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal .card{max-width:480px;width:100%}
+.qr{background:#fff;border-radius:12px;padding:10px;display:inline-block}.qr img{display:block;width:180px;height:180px}
+.stake-bar{height:10px;background:var(--bg2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}.stake-bar div{height:100%;background:linear-gradient(90deg,var(--violet),var(--gold))}
+@media(max-width:520px){.balance{font-size:30px}.words{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/logo.png" alt="" onerror="this.style.display='none'" />
+    <div class="t"><h1>СЕТЬ AYVIA</h1><div id="netline">подключение…</div></div>
+    <a class="back" href="/">← приложение</a>
+    <button class="icon-btn" id="openSettings" title="Настройки сети">⚙</button>
+  </header>
+
+  <div class="banner">Тестовая сеть: монеты AYV здесь тестовые и не имеют денежной стоимости.</div>
+
+  <div class="card">
+    <div class="status">
+      <span><span class="dot" id="netDot"></span><b id="netState">—</b></span>
+      <span>Блок: <b id="netHeight">—</b></span>
+      <span>Время блока: <b id="netBlockTime">—</b></span>
+      <span>Валидаторов: <b id="netVals">—</b></span>
+    </div>
+  </div>
+
+  <!-- not connected -->
+  <div class="card" id="connectCard">
+    <h2>Кошелёк</h2>
+    <p class="sub">Подключите расширение Keplr или Leap, либо создайте кошелёк прямо здесь. Ключи хранятся только у вас в браузере — сервер их не видит.</p>
+    <div class="row">
+      <button class="btn" id="btnKeplr">Keplr</button>
+      <button class="btn" id="btnLeap">Leap</button>
+      <button class="btn gold" id="btnCreate">Создать кошелёк</button>
+      <button class="btn ghost" id="btnImport">Войти по фразе</button>
+    </div>
+    <div id="unlockBox" class="hidden">
+      <label>У вас есть кошелёк в этом браузере. Пароль:</label>
+      <div class="row"><input type="password" id="unlockPass" style="flex:1;min-width:180px" /><button class="btn" id="btnUnlock">Открыть</button></div>
+      <div class="row" style="margin-top:8px"><button class="btn ghost" id="btnForget">Удалить кошелёк из браузера</button></div>
+    </div>
+    <div class="msg" id="connectMsg"></div>
+  </div>
+
+  <!-- create / import -->
+  <div class="card hidden" id="setupCard">
+    <h2 id="setupTitle">Новый кошелёк</h2>
+    <div id="createBox">
+      <p class="sub">Запишите эти 24 слова на бумагу и храните в надёжном месте. Это единственный способ восстановить кошелёк. Никому их не показывайте.</p>
+      <div class="words" id="words"></div>
+      <label><input type="checkbox" id="savedCheck" style="width:auto"> Я записал(а) секретную фразу</label>
+    </div>
+    <div id="importBox" class="hidden">
+      <label>Секретная фраза (12 или 24 слова через пробел)</label>
+      <textarea id="importPhrase" autocomplete="off" spellcheck="false"></textarea>
+    </div>
+    <label>Пароль для этого браузера (не меньше 8 символов)</label>
+    <input type="password" id="newPass" />
+    <label>Повторите пароль</label>
+    <input type="password" id="newPass2" />
+    <div class="row" style="margin-top:12px"><button class="btn" id="btnSaveWallet">Готово</button><button class="btn ghost" id="btnCancelSetup">Отмена</button></div>
+    <div class="msg" id="setupMsg"></div>
+  </div>
+
+  <!-- wallet -->
+  <div id="walletArea" class="hidden">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div><div class="sub" id="walletKind">Кошелёк</div><div class="balance"><span id="balance">—</span><small>AYV</small></div>
+          <div class="sub">В стейкинге: <b id="staked">0</b> AYV · Награды: <b id="rewards">0</b> AYV</div></div>
+        <div class="row"><button class="btn ghost" id="btnLogout">Выйти</button></div>
+      </div>
+      <div class="addr" id="address"></div>
+      <div class="row"><button class="btn ghost" id="btnCopy">Копировать адрес</button><button class="btn ghost" id="btnQr">QR-код</button></div>
+      <div id="qrBox" class="hidden" style="margin-top:12px"><div class="qr"><img id="qrImg" alt="QR" /></div><div class="sub">Отсканируйте, чтобы отправить AYV на этот адрес.</div></div>
+    </div>
+
+    <div class="card">
+      <div class="tabs"><button data-tab="send" class="on">Отправить</button><button data-tab="stake">Стейкинг</button><button data-tab="history">История</button></div>
+      <div id="tab-send">
+        <label>Адрес получателя</label><input id="sendTo" placeholder="ayv1..." autocomplete="off" />
+        <label>Сумма, AYV</label><input id="sendAmt" inputmode="decimal" placeholder="0.0" />
+        <label>Комментарий (необязательно)</label><input id="sendMemo" maxlength="200" />
+        <div class="row" style="margin-top:12px"><button class="btn" id="btnSend">Отправить</button><span class="sub">Комиссия считается автоматически (~0.0002 AYV)</span></div>
+        <div class="msg" id="sendMsg"></div>
+      </div>
+      <div id="tab-stake" class="hidden">
+        <div class="sub">Застейкайте AYV у валидатора и получайте награды. Вывод из стейкинга занимает период разблокировки.</div>
+        <div class="row" style="margin:10px 0"><button class="btn gold" id="btnClaim">Забрать все награды</button></div>
+        <h3 style="font-size:14px;margin:10px 0">Мои делегирования</h3><div class="list" id="myDelegations"></div>
+        <h3 style="font-size:14px;margin:14px 0 10px">Валидаторы</h3><div class="list" id="validators"></div>
+        <div class="msg" id="stakeMsg"></div>
+      </div>
+      <div id="tab-history" class="hidden"><div class="list" id="history"></div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card chart"><h2>Баланс</h2><div id="chartBalance"></div><div class="cap">По вашим транзакциям</div></div>
+      <div class="card chart"><h2>Активность сети</h2><div id="chartActivity"></div><div class="cap">Транзакций в блоке, последние 60 блоков</div></div>
+      <div class="card chart"><h2>Время блока</h2><div id="chartBlockTime"></div><div class="cap">Секунд между блоками</div></div>
+      <div class="card"><h2>Стейкинг в сети</h2><div class="balance" style="font-size:28px"><span id="stakeRatio">—</span></div>
+        <div class="stake-bar"><div id="stakeBar" style="width:0"></div></div>
+        <div class="sub" style="margin-top:8px">Застейкано <b id="bonded">—</b> из <b id="supply">—</b> AYV</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="settings">
+  <div class="card">
+    <h2>Настройки сети</h2>
+    <p class="sub">Адреса узла AYVIA. Должны начинаться с https://, если страница открыта по https.</p>
+    <label>RPC</label><input id="setRpc" placeholder="https://.../rpc" />
+    <label>REST (API)</label><input id="setRest" placeholder="https://.../rest" />
+    <div class="row" style="margin-top:12px"><button class="btn" id="btnSaveSettings">Сохранить</button><button class="btn ghost" id="btnResetSettings">По умолчанию</button><button class="btn ghost" id="btnCloseSettings">Закрыть</button></div>
+    <div class="msg" id="settingsMsg"></div>
+  </div>
+</div>
+
+<script src="/network-config.js"></script>
+<script type="module" src="__APP_JS__"></script>
+</body>
+</html>

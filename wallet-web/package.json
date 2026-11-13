@@ -1,0 +1,16 @@
+{
+  "name": "ayvia-wallet-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AYVIA network page for the Ayvia web app: wallet, balance, transfers, staking, history, charts",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@ayvia/sdk": "file:../sdk/js",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

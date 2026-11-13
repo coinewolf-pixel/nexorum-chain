@@ -50,6 +50,38 @@ class Chain:
             sys.exit(f"key {name} not found in {self.home}: {r.stderr.strip()}")
         return r.stdout.strip()
 
+    def has_key(self, name):
+        return self.cli("keys", "show", name, "-a").returncode == 0
+
+    def ensure_bots(self, names, fund_unexo):
+        """Create missing bot keys; fund every bot that is new or almost empty, in one multi-send."""
+        missing = [n for n in names if not self.has_key(n)]
+        if missing:
+            print(f"creating {len(missing)} new bots ({missing[0]}..{missing[-1]})")
+            for n in missing:
+                r = self.cli("keys", "add", n)
+                if r.returncode != 0:
+                    sys.exit(f"cannot create key {n}: {r.stderr.strip()}")
+        low = [n for n in names if self.balance(self.address(n)) < 100_000]  # < 0.1 NEXO: cannot pay fees
+        if not low:
+            return
+        print(f"funding {len(low)} bots from the faucet with {fund_unexo / 1e6:,.0f} NEXO each")
+        low_addrs = [self.address(n) for n in low]
+        r = self.cli("tx", "bank", "multi-send", "faucet", *low_addrs, f"{fund_unexo}{DENOM}",
+                     "--chain-id", self.chain_id, "--node", self.node, "--fees", "5000unexo",
+                     "--gas", "auto", "--gas-adjustment", "1.5", "-y", "-o", "json")
+        try:
+            d = json.loads(r.stdout)
+        except json.JSONDecodeError:
+            sys.exit(f"faucet transfer failed: {(r.stderr or r.stdout).strip()[-300:]}")
+        if d.get("code", 1) != 0:
+            sys.exit(f"faucet transfer rejected: {d.get('raw_log', '')[:300]}")
+        for _ in range(30):  # wait until the funds are in a block
+            time.sleep(1)
+            if self.balance(low_addrs[-1]) >= 100_000:
+                return
+        sys.exit("faucet transfer did not land in a block within 30 s")
+
     def balance(self, addr):
         r = subprocess.run([self.bin, "q", "bank", "balance", addr, DENOM, "--node", self.node, "-o", "json"],
                            capture_output=True, text=True, timeout=30)
@@ -89,10 +121,13 @@ def main():
     p.add_argument("--fee", default="500unexo")
     p.add_argument("--max-amount", type=int, default=1_000_000, help="max unexo per transfer (1 NEXO = 1e6)")
     p.add_argument("--bin", default=default_bin())
+    p.add_argument("--fund", type=int, default=10_000_000_000,
+                   help="unexo the faucet gives each newly created bot (default 10,000 NEXO)")
     args = p.parse_args()
 
     chain = Chain(args)
     names = [f"bot{i}" for i in range(args.bots)]
+    chain.ensure_bots(names, args.fund)
     addrs = {n: chain.address(n) for n in names}
     before = {n: chain.balance(a) for n, a in addrs.items()}
     start_h = chain.height()

@@ -1,0 +1,22 @@
+{
+  "name": "@nexorum/sdk",
+  "version": "0.1.0",
+  "description": "SDK for the NEXORUM blockchain: wallets, balances, transfers, staking, Keplr/Leap",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node test/e2e.mjs"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@cosmjs/proto-signing": "0.39.0",
+    "@cosmjs/stargate": "0.39.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

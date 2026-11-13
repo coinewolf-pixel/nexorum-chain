@@ -2,3 +2,5 @@ build/
 .testnet/
 *.log
 __pycache__/
+node_modules/
+sdk/js/dist/

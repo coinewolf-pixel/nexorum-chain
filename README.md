@@ -67,6 +67,30 @@ systemctl status 'nexorum-node@*' nexorum-monitor --no-pager
 
 Журналы: `journalctl -u nexorum-node@0 -f`, `journalctl -u nexorum-monitor -f`.
 
+## Панель управления
+
+Одна веб-страница для всей сети: сервер и службы, высота и время блока, валидаторы, последние
+блоки и транзакции, кошельки и балансы, запуск и остановка ботов, кран тестовых NEXO,
+журнал наблюдателя и подключение кошелька Keplr.
+
+`install-systemd.sh` ставит её как службу `nexorum-panel` и сам создаёт пароль:
+
+```bash
+sudo cat /etc/nexorum/panel.env      # пароль панели
+```
+
+Откройте `http://IP-сервера:8100` и введите пароль в поле справа вверху.
+
+Запуск вручную, без systemd:
+
+```bash
+PANEL_KEY="длинный-пароль" BASE=/data/nexorum/testnet python3 panel/panel.py
+```
+
+Кран отправляет до 1000 тестовых NEXO за раз. Для Keplr панель отдаёт RPC и REST узла по
+адресам `/rpc` и `/rest` без пароля — это публичные данные сети; если сервер виден из
+интернета, открывайте панель через HTTPS (например, `sudo tailscale serve --bg 8100`).
+
 ## Порты узлов
 
 | Узел | RPC | REST API | gRPC | P2P |
@@ -139,7 +163,8 @@ cmd/nexorumd/        программа nexorumd
 scripts/testnet.sh   создание и запуск тестовой сети
 scripts/loadbots.py  боты нагрузки
 scripts/monitor.py   наблюдатель с AI-разбором и Telegram
-scripts/install-systemd.sh  автозапуск на Ubuntu
+scripts/install-systemd.sh  автозапуск на Ubuntu (узлы, наблюдатель, панель)
+panel/panel.py       панель управления (порт 8100)
 ```
 
 ## Что дальше

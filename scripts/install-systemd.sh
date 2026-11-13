@@ -65,7 +65,34 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
+# control panel; the password is generated once and kept in /etc/nexorum/panel.env
+if [[ ! -f /etc/nexorum/panel.env ]]; then
+  printf 'PANEL_KEY=%s\n' "$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')" >/etc/nexorum/panel.env
+fi
+chmod 600 /etc/nexorum/panel.env
+
+cat >/etc/systemd/system/nexorum-panel.service <<EOF
+[Unit]
+Description=NEXORUM control panel
+After=network-online.target nexorum-node@0.service
+
+[Service]
+User=$RUN_USER
+Environment=BASE=$BASE
+Environment=NODES=$NODES
+Environment=BIN=$BIN
+EnvironmentFile=/etc/nexorum/panel.env
+ExecStart=/usr/bin/python3 $REPO/panel/panel.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 systemctl daemon-reload
 for ((i = 0; i < NODES; i++)); do systemctl enable --now "nexorum-node@$i"; done
-systemctl enable --now nexorum-monitor
-echo "Installed. Check: systemctl status 'nexorum-node@*' nexorum-monitor --no-pager"
+systemctl enable --now nexorum-monitor nexorum-panel
+echo "Installed. Check: systemctl status 'nexorum-node@*' nexorum-monitor nexorum-panel --no-pager"
+echo "Panel: http://$(hostname -I | awk '{print $1}'):8100"
+echo "Panel password: sudo cat /etc/nexorum/panel.env"
